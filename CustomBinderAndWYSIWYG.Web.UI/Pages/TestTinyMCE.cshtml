@@ -1,31 +1,158 @@
 ﻿@page
 @using CustomBinderAndWYSIWYG.Web.UI.Models
+@using Microsoft.AspNetCore.Antiforgery
+@inject IAntiforgery antiforgery
 @model CustomBinderAndWYSIWYG.Web.UI.TestTinyMCEModel
 @{
-
-    var keys = (ViewData[nameof(Keys)] as Keys)!.TinyMCE;
+	var token = antiforgery.GetAndStoreTokens(HttpContext).RequestToken;
+	var keys = (ViewData[nameof(Keys)] as Keys)!.TinyMCE;
 }
 
-<partial name="_HtmlEditor" model="1" />
-<partial name="_HtmlEditor" model="2" />
-
+<form method="post" enctype="multipart/form-data">
+	<partial name="_HtmlEditor" model="1" />
+	<partial name="_HtmlEditor" model="2" />
+</form>
 
 @section scripts
 {
-    <script src="https://cdn.tiny.cloud/1/@keys/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+	<script src="https://cdn.tiny.cloud/1/@keys/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
 
-    <script>
-        tinymce.init({
-            selector: '.editor',
-            plugins: 'anchor autolink charmap codesample emoticons image link lists media searchreplace table visualblocks wordcount checklist mediaembed casechange export formatpainter pageembed linkchecker a11ychecker tinymcespellchecker permanentpen powerpaste advtable advcode editimage advtemplate ai mentions tinycomments tableofcontents footnotes mergetags autocorrect typography inlinecss',
-            toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | link image media table mergetags | addcomment showcomments | spellcheckdialog a11ycheck typography | align lineheight | checklist numlist bullist indent outdent | emoticons charmap | removeformat',
-            tinycomments_mode: 'embedded',
-            tinycomments_author: 'Author name',
-            mergetags_list: [
-                { value: 'First.Name', title: 'First Name' },
-                { value: 'Email', title: 'Email' },
-            ],
-            ai_request: (request, respondWith) => respondWith.string(() => Promise.reject("See docs to implement AI Assistant")),
-        });
-    </script>
+	<script>
+		const example_image_upload_handler = (blobInfo, progress) => new Promise((resolve, reject) => {
+			const xhr = new XMLHttpRequest();
+			xhr.withCredentials = false;
+			xhr.open('POST', '@Url.Page("/TestTinyMCE", "UploadImage")');
+			xhr.setRequestHeader("RequestVerificationToken", "@token");
+
+			xhr.upload.onprogress = (e) => {
+				progress(e.loaded / e.total * 100);
+			};
+
+			xhr.onload = () => {
+				if (xhr.status === 403) {
+					reject({ message: 'HTTP Error: ' + xhr.status, remove: true });
+					return;
+				}
+
+				if (xhr.status < 200 || xhr.status >= 300) {
+					reject('HTTP Error: ' + xhr.status);
+					return;
+				}
+
+				const json = JSON.parse(xhr.responseText);
+
+				if (!json || typeof json.location != 'string') {
+					reject('Invalid JSON: ' + xhr.responseText);
+					return;
+				}
+
+				resolve(json.location);
+			};
+
+			xhr.onerror = () => {
+				reject('Image upload failed due to a XHR Transport error. Code: ' + xhr.status);
+			};
+
+			const formData = new FormData();
+			formData.append('file', blobInfo.blob(), blobInfo.filename());
+
+			xhr.send(formData);
+		});
+
+
+		tinymce.init({
+			selector: '.editor',
+			plugins: [
+				'image'
+				// 'a11ychecker', 'advcode', 'advlist', 'anchor', 'autolink', 'codesample', 'fullscreen', 'help',
+				// 'image', 'editimage', 'tinydrive', 'lists', 'link', 'media', 'powerpaste', 'preview',
+				// 'searchreplace', 'table', 'template', 'tinymcespellchecker', 'visualblocks', 'wordcount'
+			],
+			//toolbar: 'insertfile a11ycheck undo redo | bold italic | forecolor backcolor | template codesample | alignleft aligncenter alignright alignjustify | bullist numlist | link image',
+			tinycomments_mode: 'embedded',
+			tinycomments_author: 'Author name',
+			images_upload_base_path: '@Url.Content("~/images")',
+
+			// images_upload_url: '@Url.Page("/TestTinyMCE", "UploadImage")',
+			//paste_data_images: true,
+			// image_advtab: true,
+			automatic_uploads: true,
+
+			images_upload_handler: example_image_upload_handler,
+			// images_upload_handler: function (blobInfo, success) {
+			// 	const formData = new FormData();
+			// 	formData.append('file', blobInfo.blob(), blobInfo.filename());
+
+			// 	return fetch('@Url.Page("/TestTinyMCE", "UploadImage")', {
+			// 		method: 'POST',
+			// 		body: formData,
+			// 		headers: {
+			// 			"RequestVerificationToken": '@token'
+			// 		}
+
+			// 	})
+			// 		.then(response => response.json())
+			// 		.then(data => {
+			// 			if (data.location) {
+			// 				success(data.location);
+			// 			} else {
+			// 				//failure('Le serveur n\'a pas retourné l\'emplacement de l\'image uploadée.');
+			// 			}
+			// 		})
+			// 		.catch(error => {
+			// 			//failure('Erreur HTTP : ' + error);
+			// 		});
+			// },
+
+			// images_upload_handler: function (blobInfo, success, failure) {
+			// 	var xhr, formData;
+			// 	xhr = new XMLHttpRequest();
+			// 	xhr.withCredentials = true;
+			// 	xhr.open("POST", '@Url.Page("/TestTinyMCE", "UploadImage")');
+
+			// 	// get anti-forgery token XSRF-TOKEN from cookies and add it to request header as X-XSRF-TOKEN
+			// 	xhr.setRequestHeader("RequestVerificationToken", "@token");
+
+			// 	xhr.onload = function () {
+			// 		var json;
+
+			// 		if (xhr.status != 200) {
+			// 			console.info("HTTP Error: " + xhr.status);
+			// 			return;
+			// 		}
+
+			// 		json = JSON.parse(xhr.responseText);
+
+			// 		if (!json || typeof json.location != "string") {
+			// 			console.info("Invalid JSON: " + xhr.responseText);
+			// 			return;
+			// 		}
+
+			// 		success(json.location);
+			// 	};
+
+			// 	formData = new FormData();
+			// 	formData.append("file", blobInfo.blob(), blobInfo.filename());
+
+			// 	xhr.send(formData);
+			// }
+		});
+		// tinymce.init({
+		//     selector: '.editor',
+		//     plugins: 'anchor autolink charmap codesample emoticons image link lists media searchreplace table visualblocks wordcount checklist mediaembed casechange export formatpainter pageembed linkchecker a11ychecker tinymcespellchecker permanentpen powerpaste advtable advcode editimage advtemplate ai mentions tinycomments tableofcontents footnotes mergetags autocorrect typography inlinecss',
+		//     toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | link image media table mergetags | addcomment showcomments | spellcheckdialog a11ycheck typography | align lineheight | checklist numlist bullist indent outdent | emoticons charmap | removeformat',
+		//     tinycomments_mode: 'embedded',
+		//     tinycomments_author: 'Author name',
+		//     mergetags_list: [
+		//         { value: 'First.Name', title: 'First Name' },
+		//         { value: 'Email', title: 'Email' },
+		//     ],
+		//     ai_request: (request, respondWith) => respondWith.string(() => Promise.reject("See docs to implement AI Assistant")),
+		//     images_upload_url: '@Url.Page("TestTinyMCE")',
+		//     images_upload_base_path: '@Url.Content("~/images/upload")',
+		//     paste_data_images: true,
+		//     image_advtab: true,
+		//     automatic_uploads: true
+		// });
+	</script>
 }
