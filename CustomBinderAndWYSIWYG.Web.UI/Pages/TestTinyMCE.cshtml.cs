@@ -14,18 +14,6 @@ namespace CustomBinderAndWYSIWYG.Web.UI
 			ViewData[nameof(Keys)] = keys;
 		}
 
-		//public async Task<IActionResult> OnPostUploadImageAsync(IFormFile file)
-		//{
-		//	if (file == null || file.Length == 0)
-		//	{
-		//		return BadRequest("Le fichier est obligatoire.");
-		//	}
-
-		//	// Logique d'upload simplifiée ici...
-
-		//	return new JsonResult(new { location = "/chemin/vers/limage.jpg" });
-		//}
-
 		public async Task<IActionResult> OnPostUploadImageAsync()
 		{
 			var file = Request.Form.Files.GetFile("file"); // "file" est le nom du champ attendu par TinyMCE
