@@ -1,4 +1,5 @@
 using CustomBinderAndWYSIWYG.Web.UI.Models;
+using CustomBinderAndWYSIWYG.Web.UI.Models.Binders;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Options;
@@ -7,11 +8,24 @@ namespace CustomBinderAndWYSIWYG.Web.UI
 {
 	public class TestTinyMCEModel(IOptions<Keys> keysOptions) : PageModel
 	{
+		#region Fields
 		private Keys keys = keysOptions.Value;
+		#endregion
 
+		#region Properties
+		[ModelBinder(binderType: typeof(ListBlockModelBinder))]
+		public List<Block> Blocks { get; set; }
+		#endregion
+
+		#region Public methods
 		public void OnGet()
 		{
 			ViewData[nameof(Keys)] = keys;
+		}
+
+		public void OnPost()
+		{
+
 		}
 
 		public async Task<IActionResult> OnPostUploadImageAsync()
@@ -32,5 +46,6 @@ namespace CustomBinderAndWYSIWYG.Web.UI
 
 			return BadRequest("Aucun fichier n'a été uploadé.");
 		}
+		#endregion
 	}
 }

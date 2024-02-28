@@ -1,10 +1,14 @@
 using CustomBinderAndWYSIWYG.Web.UI.Models;
+using CustomBinderAndWYSIWYG.Web.UI.Models.Binders;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllers();
-builder.Services.AddRazorPages();
+builder.Services.AddRazorPages().AddMvcOptions(options =>
+{
+	options.ModelBinderProviders.Insert(0, new ListBlockModelBinderProvider());
+});
 
 
 builder.Services.AddCors(options =>
